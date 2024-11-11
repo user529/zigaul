@@ -1,0 +1,7 @@
+{
+  "name": "zigaul test bot",
+  "url": "https://api.example.com",
+  "port": 8081,
+  "token": "0987654321:AAAAAA-BBBBBBBBBBBB-CCCCCCCCCCCCCCC",
+  "chat_id": 123456789
+}
