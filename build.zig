@@ -24,11 +24,17 @@ pub fn build(b: *std.Build) void {
     // .optimize = optimize,
     // });
 
-    const ziglua = b.dependency("ziglua", .{
-        .target = target,
-        .optimize = optimize,
-        .lang = .lua51,
-    });
+   // const ziglua = b.dependency("ziglua", .{
+   //     .target = target,
+   //     .optimize = optimize,
+   //     .lang = .lua51,
+   // });
+   const ziglua = b.dependency("zlua", .{
+       .target = target, 
+       .optimize = optimize, 
+       .lang = .lua51, 
+       .shared = true
+   });
 
     const config_lib = b.addStaticLibrary(.{
         .name = "Config",
@@ -67,7 +73,7 @@ pub fn build(b: *std.Build) void {
     });
     exe.linkLibC();
 
-    exe.root_module.addImport("ziglua", ziglua.module("ziglua"));
+    exe.root_module.addImport("zlua", ziglua.module("zlua"));
 
     // add the ziglua module and lua artifact
     // zig dependency

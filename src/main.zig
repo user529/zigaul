@@ -7,12 +7,12 @@ const Config = @import("Config.zig");
 const Ztb = @import("Ztb.zig");
 const API = @import("telegramAPI.zig");
 
-const ziglua = @import("ziglua");
+const ziglua = @import("zlua");
 const Lua = ziglua.Lua;
 
 var bot: Ztb = undefined;
 var active: bool = true;
-pub const std_options = .{
+pub const std_options = std.Options{
     .log_level = .debug,
     .logFn = Logz.logger,
 };
@@ -40,7 +40,7 @@ fn luaHandler(lua: *Lua, update: []const u8) ![]const u8 {
     try lua.loadFile("../../src/handler.lua");
     _ = lua.pushString(update); //?
     lua.setGlobal("update");
-    try lua.protectedCall(0, 1, 0);
+    try lua.protectedCall(.{ .args=0, .results=1, .msg_handler=0});
     const lua_result = lua.toString(1) catch "<none>";
     log.debug("lua handler : {s}", .{lua_result});
     return lua_result;
@@ -63,7 +63,7 @@ pub fn main() !void {
     const allocator = arena.allocator();
     log.info("Starting up", .{});
 
-    var lua = try Lua.init(&gallocator);
+    var lua = try Lua.init(gallocator);
     defer lua.deinit();
 
     // Getting config from file
@@ -102,7 +102,7 @@ pub fn main() !void {
         arena = ArenaAllocator.init(gallocator);
         bot.allocator = arena.allocator();
         lua.deinit();
-        lua = try Lua.init(&gallocator);
+        lua = try Lua.init(gallocator);
     }
     log.info("Shutted down", .{});
 }
