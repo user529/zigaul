@@ -18,7 +18,7 @@ pub const std_options = std.Options{
 };
 
 // SIGHUP - close connections
-fn sigHUPhandler(sig: c_int) callconv(.C) void {
+fn sigHUPhandler(sig: i32) callconv(.c) void {
     std.debug.print("Received SIGHUP signal ({})\n", .{sig});
     // Handle SIGHUP here
     active = false;
@@ -40,7 +40,7 @@ fn luaHandler(lua: *Lua, update: []const u8) ![]const u8 {
     try lua.loadFile("../../src/handler.lua");
     _ = lua.pushString(update); //?
     lua.setGlobal("update");
-    try lua.protectedCall(.{ .args=0, .results=1, .msg_handler=0});
+    try lua.protectedCall(.{ .args = 0, .results = 1, .msg_handler = 0 });
     const lua_result = lua.toString(1) catch "<none>";
     log.debug("lua handler : {s}", .{lua_result});
     return lua_result;
@@ -48,7 +48,7 @@ fn luaHandler(lua: *Lua, update: []const u8) ![]const u8 {
 
 pub fn main() !void {
     // Set up signal handler
-    const mask = std.os.linux.empty_sigset;
+    const mask = std.os.linux.sigemptyset();
     const act = std.os.linux.Sigaction{
         .handler = .{ .handler = sigHUPhandler },
         .mask = mask,
@@ -77,6 +77,7 @@ pub fn main() !void {
     defer bot.deinit();
     // entering main loop
     var last_update_id: i64 = 0;
+    const sleep_duration = bot.config.polling_interval * std.time.ns_per_ms;
     while (active) {
         const current: API.Update = bot.getUpdates(&last_update_id) catch |e| excp: {
             log.warn("(loop) caught an exception: {any}", .{e});
@@ -94,7 +95,8 @@ pub fn main() !void {
             log.debug("(lua loop result): {s}", .{lua_result});
         }
 
-        std.time.sleep(bot.config.polling_interval * std.time.ns_per_ms);
+        log.debug("(loop) sleep for {any} ", .{sleep_duration});
+        std.Thread.sleep(sleep_duration);
         // log.debug("(loop) Waking up after sleep: {d} ms", .{bot.config.polling_interval});
         //
         // reseting all arena allocations that could happen during single loop run

@@ -26,34 +26,34 @@ pub fn deinit(self: *Self) void {
 
 fn dispatch(self: *Self, method: API.method, payload: []const u8) !std.json.Parsed(JSON) {
     const log = std.log.scoped(.@"ztb.dispatch");
-    var buf: [4096]u8 = undefined;
+    var writer_buffer: [4 * 1024]u8 = undefined;
+    var redirect_buffer: [4 * 1024]u8 = undefined;
 
     const url = try std.fmt.allocPrint(self.allocator, "{s}/bot{s}/{s}", .{ self.config.url, self.config.token, @tagName(method) });
     defer self.allocator.free(url);
     const uri = try std.Uri.parse(url);
+    var writer = std.fs.File.stdout().writer(&writer_buffer);
 
-    var req = try self.client.open(.POST, uri, .{ .server_header_buffer = &buf });
-    defer req.deinit();
-
-    req.transfer_encoding = .{ .content_length = payload.len };
-    req.headers.content_type = .{ .override = "application/json" };
-
-    try req.send();
-    var wtr = req.writer();
-    // log.debug("address: {s}", .{url});  //don't show token value in logs
     log.debug("payload: {s}", .{payload});
-    try wtr.writeAll(payload);
-    try req.finish();
-    log.debug("waiting response", .{});
-    try req.wait();
 
-    log.debug("received response: {s}", .{req.response.status.phrase() orelse "<NONE>"});
-    if (req.response.status != .ok) {
+    const result = try self.client.fetch(.{
+        .location = .{ .uri = uri },
+        .method = .POST,
+        .payload = payload,
+        .headers = .{ .content_type = .{ .override = "application/json" } },
+        .redirect_buffer = &redirect_buffer,
+        .response_writer = &writer.interface,
+    });
+
+    log.debug("received response: {s}", .{result.status.phrase() orelse "<NONE>"});
+    if (result.status != .ok) {
         return error.ResponseNotOK;
     }
 
-    const ln: usize = try req.readAll(&buf);
-    return try self.parseResponse(buf[0..ln]);
+    try writer.interface.flush();
+
+    const ln: usize = writer_buffer.len;
+    return try self.parseResponse(writer_buffer[0..ln]);
 }
 
 pub fn parseResponse(self: *Self, response: []u8) !std.json.Parsed(JSON) {
@@ -76,9 +76,15 @@ pub fn parseResponse(self: *Self, response: []u8) !std.json.Parsed(JSON) {
 pub fn sendMessage(self: *Self, message: []const u8) !API.Message {
     const log = std.log.scoped(.@"ztb.sendMessage");
     log.debug("input: {s}", .{message});
-    const payload = try std.json.stringifyAlloc(self.allocator, .{ .chat_id = self.config.chat_id, .text = message }, .{});
+    const json_value = .{ .chat_id = self.config.chat_id, .text = message };
+    var out: std.Io.Writer.Allocating = .init(self.allocator);
+    defer out.deinit();
+    try std.json.Stringify.value(json_value, .{}, &out.writer);
+    const payload = try out.toOwnedSlice();
+
     defer self.allocator.free(payload);
 
+    // const result = try self.dispatch(API.method.sendMessage, payload);
     const result = try self.dispatch(API.method.sendMessage, payload);
     const response_message: API.Message = parseMessage(result.value.object.get("result").?);
     return response_message;
@@ -99,8 +105,13 @@ pub fn parseMessage(response: JSON) API.Message {
 
 pub fn getUpdates(self: *Self, offset: *i64) !API.Update {
     const log = std.log.scoped(.@"ztb.getUpdates");
-    const payload = try std.json.stringifyAlloc(self.allocator, .{ .offset = offset.*, .limit = 1, .timeout = self.config.polling_timeout * std.time.ms_per_s, .allowed_updates = .{"message"} }, .{});
-    defer self.allocator.free(payload);
+    // const payload = try std.json.stringifyAlloc(self.allocator, .{ .offset = offset.*, .limit = 1, .timeout = self.config.polling_timeout * std.time.ms_per_s, .allowed_updates = .{"message"} }, .{});
+    const json_value = .{ .offset = offset.*, .limit = 1, .timeout = self.config.polling_timeout * std.time.ms_per_s, .allowed_updates = .{"message"} };
+    var out: std.Io.Writer.Allocating = .init(self.allocator);
+    defer out.deinit();
+    try std.json.Stringify.value(json_value, .{}, &out.writer);
+    const payload = try out.toOwnedSlice();
+    // defer self.allocator.free(payload);
 
     const result = try self.dispatch(API.method.getUpdates, payload);
     const update: API.Update = parseUpdate(result.value.object.get("result").?);

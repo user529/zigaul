@@ -24,38 +24,34 @@ pub fn build(b: *std.Build) void {
     // .optimize = optimize,
     // });
 
-   // const ziglua = b.dependency("ziglua", .{
-   //     .target = target,
-   //     .optimize = optimize,
-   //     .lang = .lua51,
-   // });
-   const ziglua = b.dependency("zlua", .{
-       .target = target, 
-       .optimize = optimize, 
-       .lang = .lua51, 
-       .shared = true
-   });
+    // const ziglua = b.dependency("ziglua", .{
+    //     .target = target,
+    //     .optimize = optimize,
+    //     .lang = .lua51,
+    // });
+    const ziglua = b.dependency("zlua", .{ .target = target, .optimize = optimize, .lang = .lua51, .shared = true });
 
-    const config_lib = b.addStaticLibrary(.{
-        .name = "Config",
+    const config_lib = b.addLibrary(.{ .name = "Config", .linkage = .static, .root_module = b.createModule(.{
         .root_source_file = b.path("src/Config.zig"),
         .target = target,
         .optimize = optimize,
+    }) });
+
+    const ztb_lib = b.addLibrary(.{
+        .name = "Ztb",
+        .linkage = .static,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/Ztb.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
-    const ztb_lib = b.addStaticLibrary(.{
-        .name = "Ztb",
-        .root_source_file = b.path("src/Ztb.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const log_lib = b.addStaticLibrary(.{
-        .name = "Ztb",
+    const log_lib = b.addLibrary(.{ .name = "Log", .linkage = .static, .root_module = b.createModule(.{
         .root_source_file = b.path("src/Log.zig"),
         .target = target,
         .optimize = optimize,
-    });
+    }) });
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
     // running `zig build`).
@@ -66,9 +62,9 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addExecutable(.{
         .name = "zigaul",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{ .root_source_file = b.path("src/main.zig"), .target = target }),
+        //.target = target,
+        //.optimize = optimize,
         // .use_llvm = use_llvm,
     });
     exe.linkLibC();
@@ -124,17 +120,16 @@ pub fn build(b: *std.Build) void {
 
     //const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
 
-    const exe_unit_tests = b.addTest(.{
+    const exe_unit_tests = b.addTest(.{ .root_module = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
-        .optimize = optimize,
-    });
+    }) });
 
-    const lib_unit_tests = b.addTest(.{
+    const lib_unit_tests = b.addTest(.{ .root_module = b.createModule(.{
         .root_source_file = b.path("src/tests.zig"),
         .target = target,
         .optimize = optimize,
-    });
+    }) });
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);

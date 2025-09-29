@@ -1,7 +1,6 @@
 .{
     .name = .zigaul,
-    .version = "0.0.2",
-    .fingerprint = 0x76f1545568a888f3,
+    .version = "0.0.1",
 
     // This field is optional.
     // This is currently advisory only; Zig does not yet do anything
@@ -42,12 +41,9 @@
         //    // actually used.
         //    .lazy = false,
         //},
-        .zlua = .{
-            // .url = "https://github.com/natecraddock/ziglua/archive/refs/tags/0.4.0.tar.gz",
-            .url = "https://github.com/natecraddock/ziglua/archive/refs/tags/0.5.0.tar.gz",
-            .hash = "zlua-0.1.0-hGRpC444BQDrHc6QhcEeGh1eWMwFbl-c21vlGPWjKBfQ",
-            // .hash = "zlua-0.5.0-hGRpC2rgBABehOIUe4yH9GhRxKvGBiHS25_ro61jFbTT",
-            //            .hash= "30ae1fa21508de0e757234a3058636287cde9b2e8880433968be207a7a8cc6a1",
+        .ziglua = .{
+            .url = "https://github.com/natecraddock/ziglua/archive/refs/tags/0.3.0.tar.gz",
+            .hash = "122069f4b75c946c705c0ed3218f52e0917ca361f55cebf3fb1c66a431a88ccc87b3",
         },
         //},
     },
